@@ -5,6 +5,10 @@ from models import User, Document
 from db import get_db_connection 
 from functools import wraps # Import wraps for decorator best practices
 import re
+import os
+import math
+from collections import Counter
+
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'qwerty1234'  # this should be a long random string
@@ -17,6 +21,11 @@ def home():
 @app.route('/login')
 def login_page():
     return render_template('login.html') # Serve login.html template
+
+@app.route('/register')
+def register_page():
+    return render_template('register.html')
+
 
 
 #Decorators
@@ -38,6 +47,12 @@ def role_required(role): #Decorator factory function to check user role
         return wrapper
     return decorator
 
+#frontend_ADMIN
+@app.route('/admin/dashboard')
+@role_required('admin')  # Ensure only admins can access this route
+def admin_dashboard():
+    return render_template('admin_dashboard.html')
+
 
 #LOGIN ENDPOINT
 @app.route('/auth/login', methods=['POST'])
@@ -52,14 +67,18 @@ def login_user():
     user = User.get_user_by_username(username)
 
     if not user:
-        return jsonify({'message': 'Invalid username'}), 401 # 401 Unauthorized
+        return jsonify({'message': 'Invalid username'}), 401  # 401 Unauthorized
 
     if not user.check_password(password):
-        return jsonify({'message': 'Invalid password'}), 401 # 401 Unauthorized
+        return jsonify({'message': 'Invalid password'}), 401  # 401 Unauthorized
 
     session['user_id'] = user.id  # Store user ID in session
-    session['user_role'] = user.role # Store user role in session - NEW LINE!
-    return jsonify({'message': 'Login successful'}), 200 # 200 OK
+    session['user_role'] = user.role  # Store user role in session
+
+    return jsonify({
+        'message': 'Login successful',
+        'role': user.role  # Include the user's role in the response
+    }), 200  # 200 OK
 
 #REGISTER ENDPOINT
 @app.route('/auth/register', methods=['POST'])
@@ -106,7 +125,6 @@ def logout_user():
 
 
 
-#Preprocessing Text
 def preprocess_text(text):
     """
     Preprocesses text by converting to lowercase, removing punctuation, and splitting into words.
@@ -117,29 +135,136 @@ def preprocess_text(text):
     Returns:
         A list of preprocessed words.
     """
-    text = text.lower() # Convert text to lowercase
-    text = re.sub(r'[^\w\s]', '', text) # Remove punctuation using regular expressions - keep only alphanumeric and whitespace
-    words = text.split() # Split text into words (by whitespace)
+    text = text.lower()  # Convert text to lowercase
+    text = re.sub(r'[^\w\s]', '', text)  # Remove punctuation using regular expressions
+    words = text.split()  # Split text into words (by whitespace)
     return words
 
-#Word Frequency Calculation
-def calculate_word_frequencies(word_list):
+def calculate_term_frequency(word_list):
     """
-    Calculates word frequencies from a list of words.
+    Calculates term frequency from a list of words.
 
     Args:
         word_list: A list of words (strings).
 
     Returns:
-        A dictionary where keys are unique words and values are their frequencies (counts).
+        A dictionary where keys are unique words and values are their term frequencies.
     """
-    word_counts = {} # Initialize an empty dictionary to store word counts
-    for word in word_list: # Iterate through each word in the input list
-        if word in word_counts: # Check if the word is already in the dictionary
-            word_counts[word] += 1 # If yes, increment the count
-        else:
-            word_counts[word] = 1 # If no, add the word to the dictionary with a count of 1
-    return word_counts
+    # Count occurrences of each word
+    word_counts = Counter(word_list)
+    # Calculate term frequency
+    total_words = len(word_list)
+    return {word: count/total_words for word, count in word_counts.items()}
+
+def calculate_document_frequency(documents_words):
+    """
+    Calculates document frequency for each word.
+
+    Args:
+        documents_words: A list of lists, where each inner list contains the words in a document.
+
+    Returns:
+        A dictionary mapping words to their document frequency.
+    """
+    df = {}
+    num_docs = len(documents_words)
+    
+    # Count number of documents containing each word
+    for doc_words in documents_words:
+        unique_words = set(doc_words)
+        for word in unique_words:
+            df[word] = df.get(word, 0) + 1
+    
+    # Convert to IDF (Inverse Document Frequency)
+    idf = {word: math.log(num_docs / (freq + 1)) + 1 for word, freq in df.items()}
+    return idf
+
+def calculate_tfidf_vector(term_freq, idf):
+    """
+    Calculates TF-IDF vector for a document.
+
+    Args:
+        term_freq: Term frequency dictionary for the document.
+        idf: IDF dictionary.
+
+    Returns:
+        A dictionary representing the TF-IDF vector.
+    """
+    return {word: tf * idf.get(word, 0) for word, tf in term_freq.items()}
+
+def cosine_similarity(vec1, vec2):
+   #returns the cosine similarity between two vectors
+    # Find common words
+    common_words = set(vec1.keys()) & set(vec2.keys())
+    
+    # Calculate dot product
+    dot_product = sum(vec1[word] * vec2[word] for word in common_words)
+    
+    # Calculate magnitudes
+    magnitude1 = math.sqrt(sum(val * val for val in vec1.values()))
+    magnitude2 = math.sqrt(sum(val * val for val in vec2.values()))
+    
+    # Avoid division by zero
+    if magnitude1 == 0 or magnitude2 == 0:
+        return 0
+    
+    # Calculate cosine similarity
+    return dot_product / (magnitude1 * magnitude2)
+
+def get_documents_from_uploads():
+    """
+    Reads all text files from the uploads directory and returns their content.
+
+    Returns:
+        A dictionary mapping filenames to their content.
+    """
+    documents = {}
+    upload_folder = 'uploads'
+    
+    # Make sure the folder exists
+    os.makedirs(upload_folder, exist_ok=True)
+    
+    # Read all text files in the uploads folder
+    for filename in os.listdir(upload_folder):
+        filepath = os.path.join(upload_folder, filename)
+        
+        # Only process text files for now
+        if filename.endswith('.txt') and os.path.isfile(filepath):
+            try:
+                with open(filepath, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                documents[filename] = content
+            except Exception as e:
+                print(f"Error reading {filename}: {e}")
+    
+    return documents
+
+# This will be called when the Flask app starts and whenever we need fresh data
+def update_document_vectors():
+    # Get documents from uploads folder
+    stored_documents = get_documents_from_uploads()
+    
+    if not stored_documents:
+        print("Warning: No documents found in uploads folder.")
+        return {}, {}, []
+    
+    # Preprocess all documents
+    preprocessed_docs = {doc_id: preprocess_text(content) for doc_id, content in stored_documents.items()}
+    
+    # Calculate document frequency across all documents
+    all_doc_words = list(preprocessed_docs.values())
+    idf = calculate_document_frequency(all_doc_words)
+    
+    # Calculate TF-IDF vectors for all documents
+    tfidf_vectors = {}
+    for doc_id, words in preprocessed_docs.items():
+        tf = calculate_term_frequency(words)
+        tfidf_vectors[doc_id] = calculate_tfidf_vector(tf, idf)
+    
+    return stored_documents, tfidf_vectors, idf
+
+# Initialize document data variables
+STORED_DOCUMENTS, DOCUMENT_VECTORS, GLOBAL_IDF = {}, {}, {}
 
 
 #Scan endpoint
@@ -150,20 +275,7 @@ def allowed_file(filename):
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
-# Example Stored Documents (for testing)
-STORED_DOCUMENTS = [
-    "This is the first stored document about topic A. It discusses topic A in detail.",
-    "The second document is also about topic A, but it has a different perspective.",
-    "Document number three is on topic B and is unrelated to topic A.",
-    "This fourth document is again about topic A, providing more examples."
-]
-
 # Preprocess STORED_DOCUMENTS and calculate word frequencies
-STORED_DOCUMENT_FREQUENCIES = {}
-for i, doc_text in enumerate(STORED_DOCUMENTS):
-    preprocessed_doc = preprocess_text(doc_text) # Preprocess stored document text
-    frequencies = calculate_word_frequencies(preprocessed_doc) # Calculate word frequencies
-    STORED_DOCUMENT_FREQUENCIES[f"doc_{i+1}"] = frequencies # Store frequencies in dictionary, key like "doc_1", "doc_2", etc.
 
 
 def calculate_word_overlap_similarity(doc1_frequencies, doc2_frequencies):
@@ -183,138 +295,385 @@ def calculate_word_overlap_similarity(doc1_frequencies, doc2_frequencies):
     overlap_score = len(common_words) # Word overlap score is the number of common words
     return overlap_score
 
+STORED_DOCUMENTS = {}
+DOCUMENT_VECTORS = {} 
+GLOBAL_IDF = {}
 
-
-@app.route('/scan', methods=['POST']) # expects requests with Content-Type: multipart/form-data
+@app.route('/scan', methods=['POST'])
 @role_required('user')
 def scan_document():
+    # --- Credit Deduction Logic ---
 
-        # --- Credit Deduction Logic will go here ---
-        user_id = session.get('user_id')  # User ID is already retrieved
-        user = User.get_user_by_id(user_id)  # Fetch user object
+    global STORED_DOCUMENTS, DOCUMENT_VECTORS, GLOBAL_IDF
 
-        if not user:
-            return jsonify({'message': 'User not found'}), 404  # Safety check - should not happen
+    user_id = session.get('user_id')
+    user = User.get_user_by_id(user_id)
 
-        if user.total_credits <= 0:
-            return jsonify({'message': 'Insufficient credits'}), 402  # 402 Payment Required - Insufficient credits
+    if not user:
+        return jsonify({'message': 'User not found'}), 404
 
-        User.decrement_credits(user_id)  # Call new method to decrement credits by 1
+    if user.total_credits <= 0:
+        return jsonify({'message': 'Insufficient credits'}), 402
 
+    User.decrement_credits(user_id)
+    
+    # --- Document Upload Handling ---
+    if 'document' not in request.files:
+        return jsonify({'message': 'No document part'}), 400
+
+    file = request.files['document']
+
+    if file.filename == '':
+        return jsonify({'message': 'No selected file'}), 400
+
+    if file and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+        upload_folder = 'uploads'
+        os.makedirs(upload_folder, exist_ok=True)
+        filepath = os.path.join(upload_folder, filename)
+        file.save(filepath)
+
+        # --- Document Processing ---
+        scan_results = {}
+        file_extension = filename.rsplit('.', 1)[1].lower()
         
-        # --- Document Upload Handling will go here ---
-        if 'document' not in request.files:
-            return jsonify({'message': 'No document part'}), 400  # 400 Bad Request if no file part
-
-        file = request.files['document']  # Get the uploaded file
-
-        if file.filename == '':
-            return jsonify({'message': 'No selected file'}), 400  # 400 Bad Request if no file selected
-
-        if file and allowed_file(file.filename):  # If file is present and has a filename
-            filename = secure_filename(file.filename)  # Get original filename (for now, we'll just use it)
-            # --- "Scan" Processing (Placeholder) will go here ---
-            # For now, just save the uploaded file to a temporary location (for testing)
-            upload_folder = 'uploads'  # Define a folder to save uploads
-            import os  # Import os module for file system operations
-            os.makedirs(upload_folder, exist_ok=True)  # Create the folder if it doesn't exist
-            filepath = os.path.join(upload_folder, filename)  # Construct file path
-            file.save(filepath)  # Save the uploaded file to the server
-
-            # --- "Scan" Processing (Replace Placeholder with File Content Reading) ---
-            scan_results = {}  # Initialize an empty dictionary to store scan results
-            file_extension = filename.rsplit('.', 1)[1].lower()
-            if file_extension == 'txt':
-                document_type = "Text Document"
-                try:
-                    with open(filepath, 'r') as f:
-                        uploaded_document_content = f.read()
-                    preprocessed_words = preprocess_text(uploaded_document_content)
-
-                    word_frequency_counts = calculate_word_frequencies(preprocessed_words)  # Calculate word frequencies
-                    content_snippet = uploaded_document_content[:200] + "..." if len(uploaded_document_content) > 200 else uploaded_document_content
-
-                    # --- Document Similarity Calculation ---
-                    document_similarities = {}  # Dictionary to store similarity scores for each stored document
-                    for doc_id, stored_doc_frequencies in STORED_DOCUMENT_FREQUENCIES.items():  # Iterate through stored documents and their frequencies
-                        similarity_score = calculate_word_overlap_similarity(word_frequency_counts, stored_doc_frequencies)  # Calculate similarity
-                        document_similarities[doc_id] = similarity_score  # Store score
-
-                    best_match_doc_id = "No Match Found"  # Default if no match
-                    max_similarity_score = 0
-                    for doc_id, score in document_similarities.items():  # Find document with highest similarity score
-                        if score > max_similarity_score:
-                            max_similarity_score = score
-                            best_match_doc_id = doc_id
-
-                    processing_status = "Text Content Extracted, Preprocessed, and Word Frequencies calculated, Similarity Matched (Word Overlap)"  # Update processing status message
-
-                    scan_results['document_type'] = document_type
-                    scan_results['content_snippet'] = content_snippet
-                    scan_results['processing_status'] = processing_status
-                    scan_results['uploaded_document_content'] = uploaded_document_content
-                    scan_results['preprocessed_words'] = preprocessed_words
-                    scan_results['word_frequency_counts'] = word_frequency_counts
-                    scan_results['document_similarities'] = document_similarities
-                    scan_results['best_match_document_id'] = best_match_doc_id
-                    scan_results['best_match_similarity_score'] = max_similarity_score
-
-
-
-                except Exception as e:
-                    document_type = "Text Document (Error Reading Content)"
-                    content_snippet = "Error reading document content."
-                    processing_status = f"Error: {str(e)}"
-                    uploaded_document_content = "Error reading file content"
-                    preprocessed_words = []  # Initialize preprocessed_words to empty list in case of error
-                    word_frequency_counts = {}
-                    document_similarities = {}  # Initialize for error case
-                    best_match_doc_id = "N/A" # Initialize for error case
-                    max_similarity_score = 0 # Initialize for error case
-
-
-            else:  # For non-text files (binary files)
-                document_type = "Binary Document (Content Preview Unavailable)"
-                content_snippet = "N/A - Binary file, cannot preview text content"
-                processing_status = "Binary File - Content Extraction Skipped"
-                uploaded_document_content = "Binary File - Content N/A"  # Or handle differently
-                preprocessed_words = [] # Initialize preprocessed_words to empty list for non-text files
-                word_frequency_counts = {}
-                document_similarities = {}  # Initialize for non-text files
-                best_match_doc_id = "N/A"  # Initialize for non-text files
-                max_similarity_score = 0  # Initialize for non-text files
-
-                scan_results['document_type'] = "Binary Document (Content Preview Unavailable)"
+        if file_extension == 'txt':
+            document_type = "Text Document"
+            try:
+                with open(filepath, 'r', encoding='utf-8') as f:
+                    uploaded_document_content = f.read()
+                
+                # Process the document content
+                preprocessed_words = preprocess_text(uploaded_document_content)
+                term_frequencies = calculate_term_frequency(preprocessed_words)
+                
+                # Calculate TF-IDF for the uploaded document
+                uploaded_tfidf = calculate_tfidf_vector(term_frequencies, GLOBAL_IDF)
+                
+                # Get a content snippet for display
+                content_snippet = uploaded_document_content[:200] + "..." if len(uploaded_document_content) > 200 else uploaded_document_content
+                
+                # Refresh document vectors to include any new documents
+                
+                STORED_DOCUMENTS, DOCUMENT_VECTORS, GLOBAL_IDF = update_document_vectors()
+                
+                # Calculate similarity with all stored documents
+                document_similarities = {}
+                for doc_id, doc_vector in DOCUMENT_VECTORS.items():
+                    # Skip comparing to itself if it's already in the stored documents
+                    if doc_id == filename:
+                        continue
+                    similarity_score = cosine_similarity(uploaded_tfidf, doc_vector)
+                    document_similarities[doc_id] = similarity_score
+                
+                # Find the best match
+                best_match_doc_id = "No Match Found"
+                max_similarity_score = 0
+                for doc_id, score in document_similarities.items():
+                    if score > max_similarity_score:
+                        max_similarity_score = score
+                        best_match_doc_id = doc_id
+                
+                processing_status = "Text Content Extracted, Preprocessed, and TF-IDF Similarity Analysis Completed"
+                
+                scan_results['document_type'] = document_type
                 scan_results['content_snippet'] = content_snippet
                 scan_results['processing_status'] = processing_status
                 scan_results['uploaded_document_content'] = uploaded_document_content
                 scan_results['preprocessed_words'] = preprocessed_words
-                scan_results['word_frequency_counts'] = word_frequency_counts
+                scan_results['term_frequencies'] = term_frequencies
                 scan_results['document_similarities'] = document_similarities
                 scan_results['best_match_document_id'] = best_match_doc_id
-                scan_results['best_match_similarity_score'] = max_similarity_score
-
-
-
-            scan_results['filename'] = filename  # Add filename to scan results
-            scan_results['filepath'] = filepath  # Add filepath to scan results (can be useful for debugging/logging)
-            # scan_results['processing_status'] = 'Placeholder Scan Processing Simulated' # REMOVED - using real status now
-
+                scan_results['best_match_similarity_score'] = round(max_similarity_score * 100, 2)  # Convert to percentage for clarity
+                
+            except Exception as e:
+                document_type = "Text Document (Error Reading Content)"
+                content_snippet = "Error reading document content."
+                processing_status = f"Error: {str(e)}"
+                uploaded_document_content = "Error reading file content"
+                scan_results['document_type'] = document_type
+                scan_results['content_snippet'] = content_snippet
+                scan_results['processing_status'] = processing_status
+                scan_results['uploaded_document_content'] = uploaded_document_content
+                scan_results['preprocessed_words'] = []
+                scan_results['term_frequencies'] = {}
+                scan_results['document_similarities'] = {}
+                scan_results['best_match_document_id'] = "N/A"
+                scan_results['best_match_similarity_score'] = 0
+        
+        else:  # For non-text files (binary files)
+            document_type = "Binary Document (Content Preview Unavailable)"
+            content_snippet = "N/A - Binary file, cannot preview text content"
+            processing_status = "Binary File - Content Extraction Skipped"
+            uploaded_document_content = "Binary File - Content N/A"
+            
+            scan_results['document_type'] = document_type
+            scan_results['content_snippet'] = content_snippet
+            scan_results['processing_status'] = processing_status
+            scan_results['uploaded_document_content'] = uploaded_document_content
+            scan_results['preprocessed_words'] = []
+            scan_results['term_frequencies'] = {}
+            scan_results['document_similarities'] = {}
+            scan_results['best_match_document_id'] = "N/A"
+            scan_results['best_match_similarity_score'] = 0
+        
+        scan_results['filename'] = filename
+        scan_results['filepath'] = filepath
+        
         # --- Document Metadata Storage ---
-            document = Document(filename=filename, filepath=filepath, user_id=user_id)  # Create Document object
-            if document.save():  # Save document metadata to database
-                return jsonify({
-                    'message': 'Scan request received, credit deducted, document uploaded, metadata saved, text content extracted',  # Updated message
-                    'filename': filename,
-                    'filepath': filepath,
-                    'document_id': document.id,  # Include the database-generated document ID in the response
-                    'scan_results': scan_results  # Include the  scan results in the response
-                }), 200
-            else:
-                return jsonify({'message': 'Error saving document metadata to database'}), 500  # 500 error if metadata save fails
-
+        document = Document(filename=filename, filepath=filepath, user_id=user_id)
+        if document.save():
+            return jsonify({
+                'message': 'Scan request received, credit deducted, document uploaded, metadata saved, text content extracted',
+                'filename': filename,
+                'filepath': filepath,
+                'document_id': document.id,
+                'scan_results': scan_results
+            }), 200
         else:
-            return jsonify({'message': 'Error uploading document'}), 500
+            return jsonify({'message': 'Error saving document metadata to database'}), 500
+    
+    else:
+        return jsonify({'message': 'Error uploading document'}), 500
+
+
+@app.route('/matches/<int:doc_id>', methods=['GET'])
+@role_required('user')
+def get_similar_documents(doc_id):
+    try:
+        # Get the target document
+        target_doc = Document.get_by_id(doc_id)
+        if not target_doc:
+            return jsonify({'message': 'Document not found'}), 404
+
+        # Get all documents excluding the target
+        all_docs = Document.get_all_documents()
+        similar_docs = []
+        
+        # Get similarity scores from existing data (modify this based on your storage)
+        target_filename = target_doc.filename
+        target_vector = DOCUMENT_VECTORS.get(target_filename)
+        
+        if not target_vector:
+            return jsonify({'message': 'Document analysis not available'}), 404
+
+        # Calculate similarity with all documents
+        for doc_filename, doc_vector in DOCUMENT_VECTORS.items():
+            if doc_filename == target_filename:
+                continue  # Skip self-comparison
+                
+            similarity = cosine_similarity(target_vector, doc_vector)
+            if similarity > 0:  # Adjust threshold as needed
+                similar_docs.append({
+                    'document_id': Document.get_by_filename(doc_filename).id,
+                    'filename': doc_filename,
+                    'similarity_score': round(similarity * 100, 2)
+                })
+
+        # Sort by similarity score descending
+        similar_docs.sort(key=lambda x: x['similarity_score'], reverse=True)
+        
+        # Limit results (optional)
+        limit = request.args.get('limit', default=5, type=int)
+        return jsonify({
+            'target_document': target_filename,
+            'matches': similar_docs[:limit]
+        }), 200
+
+    except Exception as e:
+        return jsonify({'message': str(e)}), 500
+
+
+@app.route('/credits/request', methods=['POST'])
+@role_required('user')
+def request_credits():
+    # Get the logged-in user's ID from the session
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'message': 'Unauthorized'}), 401
+
+    # Parse the request data
+    data = request.get_json()
+    if not data:
+        return jsonify({'message': 'No data provided'}), 400
+
+    requested_credits = data.get('requested_credits')
+
+    # Convert requested_credits to an integer
+    try:
+        requested_credits = int(requested_credits)
+    except (ValueError, TypeError):
+        return jsonify({'message': 'Invalid credit request amount (must be a number)'}), 400
+
+    # Validate the input
+    if requested_credits <= 0:
+        return jsonify({'message': 'Invalid credit request amount (must be greater than 0)'}), 400
+
+    # Connect to the database
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        # Insert the credit request into the database
+        cursor.execute(
+            "INSERT INTO credit_requests (user_id, requested_credits, status) VALUES (?, ?, 'pending')",
+            (user_id, requested_credits)
+        )
+        conn.commit()
+        return jsonify({'message': 'Credit request submitted successfully'}), 201
+    except sqlite3.Error as e:
+        conn.rollback()
+        return jsonify({'message': 'Failed to submit credit request', 'error': str(e)}), 500
+    finally:
+        conn.close()
+
+
+@app.route('/admin/credit-requests', methods=['GET'])
+@role_required('admin')
+def get_pending_credit_requests():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        # Fetch all pending credit requests
+        cursor.execute("""
+            SELECT cr.id, u.username, cr.requested_credits, cr.request_date
+            FROM credit_requests cr
+            JOIN users u ON cr.user_id = u.id
+            WHERE cr.status = 'pending'
+            ORDER BY cr.request_date DESC;
+        """)
+        pending_requests = cursor.fetchall()
+
+        # Format results
+        requests_list = []
+        for row in pending_requests:
+            requests_list.append({
+                'id': row['id'],
+                'username': row['username'],
+                'requested_credits': row['requested_credits'],
+                'request_date': row['request_date']
+            })
+
+        return jsonify(requests_list), 200
+    except sqlite3.Error as e:
+        return jsonify({'message': 'Failed to fetch pending requests', 'error': str(e)}), 500
+    finally:
+        conn.close()
+
+
+@app.route('/admin/credit-requests/<int:request_id>/approve', methods=['POST'])
+@role_required('admin')
+def approve_credit_request(request_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        # Fetch the request
+        cursor.execute("SELECT user_id, requested_credits FROM credit_requests WHERE id = ?", (request_id,))
+        request_data = cursor.fetchone()
+
+        if not request_data:
+            return jsonify({'message': 'Request not found'}), 404
+
+        user_id = request_data['user_id']
+        requested_credits = request_data['requested_credits']
+
+        # Update user's credits
+        cursor.execute("UPDATE users SET credits = credits + ? WHERE id = ?", (requested_credits, user_id))
+
+        # Update request status to 'approved'
+        cursor.execute("UPDATE credit_requests SET status = 'approved' WHERE id = ?", (request_id,))
+
+        conn.commit()
+        return jsonify({'message': 'Credit request approved successfully'}), 200
+    except sqlite3.Error as e:
+        conn.rollback()
+        return jsonify({'message': 'Failed to approve credit request', 'error': str(e)}), 500
+    finally:
+        conn.close()
+
+@app.route('/admin/credit-requests/<int:request_id>/reject', methods=['POST'])
+@role_required('admin')
+def reject_credit_request(request_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        # Update request status to 'rejected'
+        cursor.execute("UPDATE credit_requests SET status = 'rejected' WHERE id = ?", (request_id,))
+        conn.commit()
+        return jsonify({'message': 'Credit request rejected successfully'}), 200
+    except sqlite3.Error as e:
+        conn.rollback()
+        return jsonify({'message': 'Failed to reject credit request', 'error': str(e)}), 500
+    finally:
+        conn.close()
+
+
+@app.route('/admin/analytics', methods=['GET'])
+@role_required('admin')
+def get_admin_analytics():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        # Scans per user per day
+        cursor.execute("""
+            SELECT u.username, DATE(d.scan_date) AS scan_day, COUNT(d.id) AS scan_count
+            FROM documents d
+            JOIN users u ON d.user_id = u.id
+            GROUP BY u.username, DATE(d.scan_date)
+            ORDER BY scan_day DESC, scan_count DESC;
+        """)
+        scans_per_user = cursor.fetchall()
+
+        # Most common scanned document topics (assuming topics are derived from filenames)
+        cursor.execute("""
+            SELECT SUBSTR(filename, 1, INSTR(filename, '.') - 1) AS topic, COUNT(id) AS scan_count
+            FROM documents
+            GROUP BY topic
+            ORDER BY scan_count DESC
+            LIMIT 10;
+        """)
+        common_topics = cursor.fetchall()
+
+        # Top users by scans and credit usage
+        cursor.execute("""
+            SELECT u.username, COUNT(d.id) AS total_scans, SUM(cr.requested_credits) AS total_credits_used
+            FROM users u
+            LEFT JOIN documents d ON u.id = d.user_id
+            LEFT JOIN credit_requests cr ON u.id = cr.user_id AND cr.status = 'approved'
+            GROUP BY u.username
+            ORDER BY total_scans DESC, total_credits_used DESC
+            LIMIT 10;
+        """)
+        top_users = cursor.fetchall()
+
+        # Credit usage statistics
+        cursor.execute("""
+            SELECT 
+                SUM(requested_credits) AS total_credits_used,
+                AVG(requested_credits) AS avg_credits_used,
+                SUM(CASE WHEN status = 'approved' THEN requested_credits ELSE 0 END) AS approved_credits,
+                SUM(CASE WHEN status = 'pending' THEN requested_credits ELSE 0 END) AS pending_credits
+            FROM credit_requests;
+        """)
+        credit_stats = cursor.fetchone()
+
+        # Combine all analytics data
+        analytics_data = {
+            'scans_per_user': scans_per_user,
+            'common_topics': common_topics,
+            'top_users': top_users,
+            'credit_stats': credit_stats
+        }
+
+        return jsonify(analytics_data), 200
+    except sqlite3.Error as e:
+        return jsonify({'message': 'Failed to fetch analytics data', 'error': str(e)}), 500
+    finally:
+        conn.close()
 
 if __name__ == '__main__':
-    app.run(debug=True) #debug=True for development, remove in production
+   app.run(debug=True)

@@ -1,0 +1,118 @@
+/* Admin Dashboard Styles */
+.pending-requests {
+    margin-bottom: 20px;
+    padding: 20px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background-color: #f9f9f9;
+}
+
+.pending-requests h2 {
+    margin-top: 0;
+    color: #2c3e50;
+}
+
+#pendingRequestsTable {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+#pendingRequestsTable th,
+#pendingRequestsTable td {
+    padding: 10px;
+    border: 1px solid #ddd;
+    text-align: left;
+}
+
+#pendingRequestsTable th {
+    background-color: #3498db;
+    color: white;
+}
+
+#pendingRequestsTable tr:nth-child(even) {
+    background-color: #f4f4f4;
+}
+
+#pendingRequestsTable tr:hover {
+    background-color: #ecf0f1;
+}
+
+#pendingRequestsTable button {
+    padding: 5px 10px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+#pendingRequestsTable button.approve {
+    background-color: #27ae60;
+    color: white;
+}
+
+#pendingRequestsTable button.reject {
+    background-color: #e74c3c;
+    color: white;
+}
+
+#pendingRequestsTable button:hover {
+    opacity: 0.8;
+}
+
+/* Analytics Section */
+.analytics-section {
+    margin-top: 20px;
+}
+
+.chart-container {
+    margin-bottom: 20px;
+    padding: 20px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background-color: #f9f9f9;
+}
+
+.chart-container h3 {
+    margin-top: 0;
+    color: #2c3e50;
+}
+
+#topUsersTable {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+#topUsersTable th,
+#topUsersTable td {
+    padding: 10px;
+    border: 1px solid #ddd;
+    text-align: left;
+}
+
+#topUsersTable th {
+    background-color: #3498db;
+    color: white;
+}
+
+#topUsersTable tr:nth-child(even) {
+    background-color: #f4f4f4;
+}
+
+#topUsersTable tr:hover {
+    background-color: #ecf0f1;
+}
+
+#creditStats {
+    margin-top: 10px;
+}
+
+#creditStats p {
+    margin: 5px 0;
+    font-size: 16px;
+}
+
+#creditStats strong {
+    color: #333;
+}

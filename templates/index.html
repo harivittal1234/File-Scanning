@@ -7,8 +7,24 @@
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
+    <!-- Navigation Bar -->
+    <div class="navbar">
+        <div class="container">
+            <h1>Document Scanner</h1>
+            <button id="authButton" class="nav-button">Login</button> <!-- Updated ID -->
+        </div>
+    </div>
+
+    <!-- User Profile Section -->
+    <div id="userProfileSection" style="margin-bottom: 20px; padding: 15px; border: 1px solid #ccc; border-radius: 5px; background-color: #f9f9f9;">
+        <h2>User Profile</h2>
+        <div id="userProfileContent">
+            <p style="color: #666;">You are not logged in. <a href="/login">Log in</a> or <a href="/register">register</a> to access your profile.</p>
+        </div>
+    </div>
+
+    <!-- Main Content -->
     <div class="container">
-        <h1>Document Scanner</h1>
         <div class="upload-section">
             <h2>Upload Document</h2>
             <input type="file" id="documentUpload" name="document" accept=".pdf,.txt,.docx,.jpg,.jpeg,.png">
@@ -16,26 +32,45 @@
             <div id="uploadStatus"></div>
         </div>
 
-        <div id="scan-results-container" style="margin-top: 20px; display: none; border: 1px solid #ccc; padding: 15px; border-radius: 5px;">
+        <div id="scan-results-container" style="margin-top: 20px; display: none; border: 1px solid #ccc; padding: 20px; border-radius: 8px; background-color: #f9f9f9;">
             <h2>Scan Results:</h2>
             <div id="scan-results-content">
-                <p><strong>Document Type:</strong> <span id="document-type-result"></span></p>
-                <p><strong>Content Snippet:</strong> <pre><code id="content-snippet-result"></code></pre></p>
-                <p><strong>Processing Status:</strong> <span id="processing-status-result"></span></p>
-                <p><strong>Filename:</strong> <span id="scan-filename-result"></span></p>
-                <p><strong>Filepath (Server):</strong> <span id="scan-filepath-result"></span></p>
-                <p><strong>Document ID:</strong> <span id="document-id-result"></span></p>
-        
+                <p><strong>Document Type:</strong> <span id="document-type-result" class="result-value"></span></p>
+                <p><strong>Content Snippet:</strong> <pre><code id="content-snippet-result" class="result-value"></code></pre></p>
+                <p><strong>Processing Status:</strong> <span id="processing-status-result" class="result-value"></span></p>
+                <p><strong>Filename:</strong> <span id="scan-filename-result" class="result-value"></span></p>
+                <p><strong>Filepath (Server):</strong> <span id="scan-filepath-result" class="result-value"></span></p>
+                <p><strong>Document ID:</strong> <span id="document-id-result" class="result-value"></span></p>
+
                 <div id="best-match-document-output">
-                    <strong>Best Matching Document:</strong> <span id="best-match-document-id-result"></span>
+                    <strong>Best Matching Document:</strong> <span id="best-match-document-id-result" class="result-value"></span>
                 </div>
                 <div id="best-match-similarity-score-output">
-                    <strong>Similarity Score (Word Overlap):</strong> <span id="best-match-similarity-score-result"></span>
+                    <strong>Similarity Score (Word Overlap):</strong> <span id="best-match-similarity-score-result" class="result-value"></span>
                 </div>
-        
+
+                <!-- Matches Section -->
+                <div id="matches-container" style="margin-top: 20px;">
+                    <h3>Similar Documents:</h3>
+                    <div id="matches-list" style="margin-top: 10px;"></div>
+                </div>
             </div>
         </div>
+
+        <!-- Credit Request Form -->
+        <div class="credit-request-form">
+            <h2>Request Additional Credits</h2>
+            <form id="creditRequestForm">
+                <div class="form-group">
+                    <label for="requestedCredits">Number of Credits:</label>
+                    <input type="number" id="requestedCredits" name="requestedCredits" required min="1">
+                </div>
+                <button type="submit" class="submit-button">Submit Request</button>
+            </form>
+            <div id="creditRequestStatus"></div>
+        </div>
     </div>
+
     <script src="/static/script.js"></script>
 </body>
 </html>

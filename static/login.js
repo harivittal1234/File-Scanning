@@ -11,32 +11,34 @@ document.addEventListener('DOMContentLoaded', function() {
         loginStatus.textContent = 'Logging in...';
         loginStatus.className = 'status-message'; // Reset to default style
 
-        const formData = new URLSearchParams(); // Or FormData, depends on backend expectation
-        formData.append('username', username);
-        formData.append('password', password);
-
         fetch('/auth/login', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json', // Or 'application/json' if backend expects JSON
+                'Content-Type': 'application/json',
             },
-            body: JSON.stringify({username: username, password: password}) // Or JSON.stringify({username: username, password: password}) if backend expects JSON
+            body: JSON.stringify({ username, password }),
         })
         .then(response => {
-            if (response.ok) {
-                loginStatus.textContent = 'Login successful! Redirecting...';
-                loginStatus.className = 'status-message success';
-                // Redirect to the main document scanner page after successful login
-                window.location.href = '/'; // Or '/scan' or wherever your main page is
-            } else {
-                return response.json().then(errorData => { // Try to parse JSON error response
-                    loginStatus.textContent = 'Login failed: ' + (errorData.message || 'Invalid username or password.');
-                    loginStatus.className = 'status-message error';
+            if (!response.ok) {
+                return response.json().then(errorData => {
+                    throw new Error(errorData.message || 'Login failed');
                 });
+            }
+            return response.json();
+        })
+        .then(data => {
+            loginStatus.textContent = 'Login successful! Redirecting...';
+            loginStatus.className = 'status-message success';
+
+            // Check the user's role and redirect accordingly
+            if (data.role === 'admin') {
+                window.location.href = '/admin/dashboard'; // Redirect to Admin Dashboard
+            } else {
+                window.location.href = '/'; // Redirect to regular user interface
             }
         })
         .catch(error => {
-            loginStatus.textContent = 'Login failed: Network error.';
+            loginStatus.textContent = 'Login failed: ' + error.message;
             loginStatus.className = 'status-message error';
             console.error('Login error:', error);
         });

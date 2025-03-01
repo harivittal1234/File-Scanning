@@ -151,3 +151,55 @@ class Document:
         finally:
             conn.close() # Ensure connection is closed
         return document # Return Document object (or None if not found)
+    @classmethod
+    def get_by_id(cls, doc_id):
+        """Get document by ID (alias for existing get_document_by_id)"""
+        return cls.get_document_by_id(doc_id)
+
+    @classmethod
+    def get_all_documents(cls):
+        """Get all documents from the database"""
+        conn = get_db_connection()
+        conn.row_factory = sqlite3.Row
+        documents = []
+        try:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM documents")
+            rows = cursor.fetchall()
+            for row in rows:
+                documents.append(Document(
+                    id=row['id'],
+                    filename=row['filename'],
+                    filepath=row['filepath'],
+                    user_id=row['user_id'],
+                    scan_date=row['scan_date']
+                ))
+        except sqlite3.Error as e:
+            print(f"Database error in get_all_documents: {e}")
+        finally:
+            conn.close()
+        return documents
+
+    @classmethod
+    def get_by_filename(cls, filename):
+        """Get document by filename"""
+        conn = get_db_connection()
+        conn.row_factory = sqlite3.Row
+        document = None
+        try:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM documents WHERE filename = ?", (filename,))
+            row = cursor.fetchone()
+            if row:
+                document = Document(
+                    id=row['id'],
+                    filename=row['filename'],
+                    filepath=row['filepath'],
+                    user_id=row['user_id'],
+                    scan_date=row['scan_date']
+                )
+        except sqlite3.Error as e:
+            print(f"Database error in get_by_filename: {e}")
+        finally:
+            conn.close()
+        return document

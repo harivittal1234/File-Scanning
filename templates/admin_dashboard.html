@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="/static/admin_dashboard.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <div class="navbar">
+        <div class="container">
+            <h1>Admin Dashboard</h1>
+            <button id="logoutButton" class="nav-button">Logout</button>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container">
+        <!-- Pending Credit Requests -->
+        <div class="pending-requests">
+            <h2>Pending Credit Requests</h2>
+            <table id="pendingRequestsTable">
+                <thead>
+                    <tr>
+                        <th>Username</th>
+                        <th>Requested Credits</th>
+                        <th>Request Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <!-- Analytics Section -->
+        <div class="analytics-section">
+            <h2>Analytics</h2>
+
+            <!-- Scans Per User Per Day -->
+            <div class="chart-container">
+                <h3>Scans Per User Per Day</h3>
+                <canvas id="scansPerUserChart"></canvas>
+            </div>
+
+            <!-- Most Common Scanned Document Topics -->
+            <div class="chart-container">
+                <h3>Most Common Scanned Document Topics</h3>
+                <canvas id="commonTopicsChart"></canvas>
+            </div>
+
+            <!-- Top Users by Scans and Credit Usage -->
+            <div class="chart-container">
+                <h3>Top Users by Scans and Credit Usage</h3>
+                <table id="topUsersTable">
+                    <thead>
+                        <tr>
+                            <th>Username</th>
+                            <th>Total Scans</th>
+                            <th>Total Credits Used</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <!-- Credit Usage Statistics -->
+            <div class="chart-container">
+                <h3>Credit Usage Statistics</h3>
+                <div id="creditStats"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/admin_dashboard.js"></script>
+</body>
+</html>
