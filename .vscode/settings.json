@@ -1,0 +1,11 @@
+{
+    "sqltools.useNodeRuntime": true,
+    "sqltools.connections": [
+        {
+            "previewLimit": 50,
+            "driver": "SQLite",
+            "name": "SQLiteConnection",
+            "database": "${workspaceFolder:File matching}/new_database.db"
+        }
+    ]
+}

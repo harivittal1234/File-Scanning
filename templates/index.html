@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document Scanner</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Document Scanner</h1>
+        <div class="upload-section">
+            <h2>Upload Document</h2>
+            <input type="file" id="documentUpload" name="document" accept=".pdf,.txt,.docx,.jpg,.jpeg,.png">
+            <button id="scanButton">Scan Document</button>
+            <div id="uploadStatus"></div>
+        </div>
+
+        <div id="scan-results-container" style="margin-top: 20px; display: none; border: 1px solid #ccc; padding: 15px; border-radius: 5px;">
+            <h2>Scan Results:</h2>
+            <div id="scan-results-content">
+                <p><strong>Document Type:</strong> <span id="document-type-result"></span></p>
+                <p><strong>Content Snippet:</strong> <pre><code id="content-snippet-result"></code></pre></p>
+                <p><strong>Processing Status:</strong> <span id="processing-status-result"></span></p>
+                <p><strong>Filename:</strong> <span id="scan-filename-result"></span></p>
+                <p><strong>Filepath (Server):</strong> <span id="scan-filepath-result"></span></p>
+                <p><strong>Document ID:</strong> <span id="document-id-result"></span></p>
+        
+                <div id="best-match-document-output">
+                    <strong>Best Matching Document:</strong> <span id="best-match-document-id-result"></span>
+                </div>
+                <div id="best-match-similarity-score-output">
+                    <strong>Similarity Score (Word Overlap):</strong> <span id="best-match-similarity-score-result"></span>
+                </div>
+        
+            </div>
+        </div>
+    </div>
+    <script src="/static/script.js"></script>
+</body>
+</html>
