@@ -1,0 +1,33 @@
+### Explanation of the /auth/login Route:
+
+@app.route('/auth/login', methods=['POST']): Defines the route for user login, accepting only POST requests.
+login_user() function:
+data = request.get_json(): Parses the incoming request body as JSON.
+username = data.get('username') and password = data.get('password'): Extracts username and password from the JSON data.
+Input Validation: if not username or not password: checks for missing credentials and returns a 400 (Bad Request) error if either is missing.
+Fetch User by Username: user = User.get_user_by_username(username): Tries to retrieve the user from the database using the provided username.
+Check if User Exists: if not user:: If get_user_by_username returns None (user not found), it means the username is invalid. Returns a 401 (Unauthorized) error.
+Verify Password: if not user.check_password(password):: If the user is found, it calls the check_password method of the User object to verify if the provided password matches the stored hashed password. If passwords don't match, returns a 401 (Unauthorized) error.   
+Session Creation (Successful Login): session['user_id'] = user.id: If both username and password are correct, this line is crucial. It stores the user.id in the Flask session. This is what actually "logs in" the user. Flask will handle setting the session cookie in the response.
+Success Response: return jsonify({'message': 'Login successful'}), 200: Returns a 200 (OK) status code with a success message in JSON format, indicating successful login.
+
+
+###Explanation of the /user/profile Route:
+
+@app.route('/user/profile', methods=['GET']): Defines the route for getting the user profile, using the GET method.
+get_user_profile() function:
+user_id = session.get('user_id'): This is the crucial line for authentication. It tries to get the user_id from the Flask session. If a user is logged in, we stored their user_id in the session during login.
+if not user_id:: Checks if user_id is present in the session. If session.get('user_id') returns None (meaning no user_id is in the session), it means the user is not logged in.
+return jsonify({'message': 'Unauthorized'}), 401: If not logged in, it returns a 401 Unauthorized error response, indicating that this endpoint requires authentication.
+user = User.get_user_by_id(user_id): If user_id is found in the session, it means the user is logged in. This line fetches the full User object from the database using the user_id from the session. We use the User.get_user_by_id() method that we added to models.py.
+if not user:: Checks if User.get_user_by_id() returned a User object. In theory, if the session is valid and we have a user_id, the user should always be found in the database. However, it's good practice to include this check as a safety measure in case of unexpected data inconsistencies. If the user is not found (which shouldn't happen in normal operation if the session is valid), it returns a 404 Not Found error.
+Prepare User Profile Data:
+Python
+
+user_profile = {
+    'username': user.username,
+    'credits': user.total_credits,
+    'role': user.role
+}
+This creates a Python dictionary user_profile containing the user's username, total_credits, and role. This is the data we want to send back to the frontend as the user profile information.
+Return Profile Data: return jsonify(user_profile), 200: Returns a 200 OK success response, with the user_profile dictionary converted to JSON in the response body.
