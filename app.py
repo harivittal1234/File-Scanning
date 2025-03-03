@@ -8,10 +8,21 @@ import re
 import os
 import math
 from collections import Counter
+from apscheduler.schedulers.background import BackgroundScheduler
 
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'qwerty1234'  # this should be a long random string
+
+scheduler = BackgroundScheduler(daemon=True)
+scheduler.add_job(
+    id='daily_credit_reset',
+    func=lambda: User.reset_all_credits(),
+    trigger='cron',
+    hour=0,  # Runs daily at midnight
+    timezone='UTC'
+)
+scheduler.start()
 
 ###FRONTEND ROUTES
 @app.route('/')
@@ -676,4 +687,5 @@ def get_admin_analytics():
         conn.close()
 
 if __name__ == '__main__':
+   STORED_DOCUMENTS, DOCUMENT_VECTORS, GLOBAL_IDF = update_document_vectors()
    app.run(debug=True)

@@ -27,7 +27,42 @@ class User:
         except sqlite3.IntegrityError:  # Username already exists (UNIQUE constraint)
             conn.close()
             return None  # Indicate registration failure due to username conflict
+    @staticmethod
+    def decrement_credits(user_id):
+        """Atomic credit decrement with transaction"""
+        conn = get_db_connection()
+        try:
+            conn.execute("BEGIN TRANSACTION")
+            # Add check for credits > 0
+            conn.execute(
+                "UPDATE users SET credits = credits - 1 WHERE id = ? AND credits > 0",
+                (user_id,)
+            )
+            conn.commit()
+            return True
+        except sqlite3.Error as e:
+            conn.rollback()
+            print(f"Database error in decrement_credits: {e}")
+            return False
+        finally:
+            conn.close()
 
+    # Add this new method
+    @staticmethod
+    def reset_all_credits():
+        """Reset credits for all users to 20"""
+        conn = get_db_connection()
+        try:
+            conn.execute(
+                "UPDATE users SET credits = 20, last_reset = CURRENT_TIMESTAMP"
+            )
+            conn.commit()
+            return True
+        except sqlite3.Error as e:
+            print(f"Credit reset failed: {e}")
+            return False
+        finally:
+            conn.close()
     @staticmethod
     def get_user_by_username(username):
         conn = get_db_connection()
