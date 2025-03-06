@@ -1,8 +1,6 @@
 # Credit-Based Document Scanning System
 
 
-# Document Similarity Analyzer
-
 This project is a Flask-based web application that allows users to upload documents, analyze their content, and find similar documents based on text similarity using TF-IDF and cosine similarity. The application also includes user authentication, role-based access control, and credit management for document scans.
 
 ## Features
@@ -114,13 +112,6 @@ Before running the application, ensure you have the following installed:
 
 ## Contributing
 
-Contributions are welcome! Please follow these steps:
-
-1. Fork the repository.
-2. Create a new branch (`git checkout -b feature/YourFeatureName`).
-3. Commit your changes (`git commit -m 'Add some feature'`).
-4. Push to the branch (`git push origin feature/YourFeatureName`).
-5. Open a pull request.
 
 ## License
 
