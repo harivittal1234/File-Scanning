@@ -26,8 +26,8 @@ Before running the application, ensure you have the following installed:
 
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/yourusername/document-similarity-analyzer.git
-   cd document-similarity-analyzer
+   git clone https://github.com/harivittal1234/File-Scanning.git
+   
    
 
 2. **Set up a virtual environment** (optional but recommended):
