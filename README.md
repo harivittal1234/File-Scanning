@@ -123,5 +123,3 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 - SQLite for database management.
 - The TF-IDF and cosine similarity algorithms for document analysis.
 ```
-
-You can copy and paste this Markdown content directly into your `README.md` file on GitHub. Once added, you can click the "Preview" button to see how it will look.
