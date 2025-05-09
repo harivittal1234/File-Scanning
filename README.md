@@ -122,4 +122,4 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 - Flask for providing the web framework.
 - SQLite for database management.
 - The TF-IDF and cosine similarity algorithms for document analysis.
-```
+
